@@ -167,6 +167,83 @@ function MobileApp() {
     }
   };
 
+  const searchNotes = (term) => {
+    if (!term.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const results = notes.filter(note => {
+      const titleMatch = note.title?.toLowerCase().includes(term.toLowerCase());
+      const contentMatch = note.content?.toLowerCase().includes(term.toLowerCase());
+      return titleMatch || contentMatch;
+    });
+
+    setSearchResults(results);
+  };
+  const searchInNote = (term, shouldNavigate = false) => {
+    if (!term.trim() || !currentNote.content) {
+      setSearchMatches([]);
+      setCurrentSearchIndex(0);
+      return;
+    }
+
+    const matches = [];
+    const content = currentNote.content.toLowerCase();
+    const searchTerm = term.toLowerCase();
+    let index = content.indexOf(searchTerm);
+    
+    while (index !== -1) {
+      matches.push({
+        start: index,
+        end: index + searchTerm.length
+      });
+      index = content.indexOf(searchTerm, index + 1);
+    }
+
+    setSearchMatches(matches);
+    setActiveSearch(term);
+    
+    if (matches.length > 0 && shouldNavigate) {
+      setCurrentSearchIndex(0);
+      highlightMatch(matches[0]);
+    }
+  };
+
+  const highlightMatch = (match) => {
+    if (textareaRef.current) {
+      const textarea = textareaRef.current;
+      
+      textarea.focus();
+      textarea.setSelectionRange(match.start, match.end);
+      
+      const textBefore = textarea.value.substring(0, match.start);
+      const linesBefore = textBefore.split('\n').length;
+      const lineHeight = parseFloat(window.getComputedStyle(textarea).lineHeight) || 20;
+      
+      const scrollPosition = (linesBefore - 1) * lineHeight;
+      textarea.scrollTop = scrollPosition - 100;
+    }
+  };
+
+  const nextSearchResult = () => {
+    if (searchMatches.length > 0) {
+      const newIndex = (currentSearchIndex + 1) % searchMatches.length;
+      setCurrentSearchIndex(newIndex);
+      highlightMatch(searchMatches[newIndex]);
+    }
+  };
+  
+  const previousSearchResult = () => {
+    if (searchMatches.length > 0) {
+      const newIndex = currentSearchIndex === 0 ? 
+        searchMatches.length - 1 : 
+        currentSearchIndex - 1;
+      setCurrentSearchIndex(newIndex);
+      highlightMatch(searchMatches[newIndex]);
+    }
+  };
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-gray-100 p-4">
