@@ -258,7 +258,7 @@ function App() {
       html += escapeHtml(currentNote.content.substring(index + noteSearchTerm.length)); */
       
       // Reemplazar saltos de línea manteniendo el formato
-      overlay.innerHTML = html.replace(/\n/g, '<br>');
+      //overlay.innerHTML = html.replace(/\n/g, '<br>');
   
       // Agregar el overlay al DOM
       textarea.parentNode.appendChild(overlay);
