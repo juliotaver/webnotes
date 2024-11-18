@@ -90,23 +90,6 @@ function App() {
       console.error('Error loading notes:', error);
     }
   };
-  const nextSearchResult = () => {
-    if (searchMatches.length > 0) {
-      const newIndex = (currentSearchIndex + 1) % searchMatches.length;
-      setCurrentSearchIndex(newIndex);
-      highlightMatch(searchMatches[newIndex]);
-    }
-  };
-  
-  const previousSearchResult = () => {
-    if (searchMatches.length > 0) {
-      const newIndex = currentSearchIndex === 0 ? 
-        searchMatches.length - 1 : 
-        currentSearchIndex - 1;
-      setCurrentSearchIndex(newIndex);
-      highlightMatch(searchMatches[newIndex]);
-    }
-  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -184,6 +167,7 @@ function App() {
       console.error('Error updating note:', error);
     }
   };
+
   const searchNotes = (term) => {
     if (!term.trim()) {
       setSearchResults([]);
@@ -198,7 +182,6 @@ function App() {
 
     setSearchResults(results);
   };
-
   const searchInNote = (term, shouldNavigate = false) => {
     if (!term.trim() || !currentNote.content) {
       setSearchMatches([]);
@@ -225,45 +208,76 @@ function App() {
     }
   };
 
+  const nextSearchResult = () => {
+    if (searchMatches.length > 0) {
+      const newIndex = (currentSearchIndex + 1) % searchMatches.length;
+      setCurrentSearchIndex(newIndex);
+      highlightMatch(searchMatches[newIndex]);
+    }
+  };
+  
+  const previousSearchResult = () => {
+    if (searchMatches.length > 0) {
+      const newIndex = currentSearchIndex === 0 ? 
+        searchMatches.length - 1 : 
+        currentSearchIndex - 1;
+      setCurrentSearchIndex(newIndex);
+      highlightMatch(searchMatches[newIndex]);
+    }
+  };
+
   const highlightMatch = (index) => {
     if (textareaRef.current) {
       const lineHeight = 20;
       const textBefore = currentNote.content.substring(0, index);
       const lineCount = textBefore.split('\n').length;
       const scrollPosition = lineHeight * lineCount;
-      
       textareaRef.current.scrollTop = scrollPosition - 100;
 
-      const textArea = textareaRef.current;
-      const wrapper = document.createElement('div');
-      wrapper.style.position = 'relative';
-      textArea.parentNode.insertBefore(wrapper, textArea);
+      const textarea = textareaRef.current;
+      const textareaRect = textarea.getBoundingClientRect();
 
-      const highlight = document.createElement('div');
-      highlight.style.position = 'absolute';
-      highlight.style.backgroundColor = 'yellow';
-      highlight.style.opacity = '0.5';
-      highlight.style.pointerEvents = 'none';
+      const mirror = document.createElement('div');
+      mirror.style.position = 'absolute';
+      mirror.style.top = '0';
+      mirror.style.left = '0';
+      mirror.style.width = '100%';
+      mirror.style.height = '100%';
+      mirror.style.pointerEvents = 'none';
+      mirror.style.backgroundColor = 'transparent';
+      mirror.style.whiteSpace = 'pre-wrap';
+      mirror.style.wordWrap = 'break-word';
+      mirror.style.padding = window.getComputedStyle(textarea).padding;
+      mirror.style.font = window.getComputedStyle(textarea).font;
+      mirror.style.lineHeight = window.getComputedStyle(textarea).lineHeight;
 
-      const textMetrics = textArea.getBoundingClientRect();
-      const charWidth = textMetrics.width / textArea.cols;
-      const charHeight = lineHeight;
+      const beforeText = currentNote.content.substring(0, index);
+      const searchText = currentNote.content.substring(index, index + noteSearchTerm.length);
+      const afterText = currentNote.content.substring(index + noteSearchTerm.length);
 
-      highlight.style.left = (index % textArea.cols) * charWidth + 'px';
-      highlight.style.top = Math.floor(index / textArea.cols) * charHeight + 'px';
-      highlight.style.width = activeSearch.length * charWidth + 'px';
-      highlight.style.height = charHeight + 'px';
+      mirror.innerHTML = `
+        ${beforeText}
+        <span style="background-color: yellow; color: inherit;">${searchText}</span>
+        ${afterText}
+      `.replace(/\n/g, '<br>');
 
-      wrapper.appendChild(highlight);
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.top = '0';
+      container.style.left = '0';
+      container.style.width = '100%';
+      container.style.height = '100%';
+      container.style.overflow = 'hidden';
+      container.style.pointerEvents = 'none';
+      container.appendChild(mirror);
+
+      textarea.parentNode.appendChild(container);
 
       setTimeout(() => {
-        if (highlight.parentNode) {
-          highlight.parentNode.removeChild(highlight);
+        if (container.parentNode) {
+          container.parentNode.removeChild(container);
         }
-        if (wrapper.parentNode) {
-          wrapper.parentNode.removeChild(wrapper);
-        }
-      }, 2000);
+      }, 1500);
     }
   };
 
@@ -401,7 +415,7 @@ function App() {
           <div className="flex-1 relative">
             <textarea
               ref={textareaRef}
-              className="w-full h-full p-4 resize-none focus:outline-none"
+              className="w-full h-full p-4 resize-none focus:outline-none absolute top-0 left-0"
               value={currentNote.content || ''}
               onChange={(e) => {
                 const newContent = e.target.value;
