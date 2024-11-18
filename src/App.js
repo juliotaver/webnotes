@@ -90,6 +90,23 @@ function App() {
       console.error('Error loading notes:', error);
     }
   };
+  const nextSearchResult = () => {
+    if (searchMatches.length > 0) {
+      const newIndex = (currentSearchIndex + 1) % searchMatches.length;
+      setCurrentSearchIndex(newIndex);
+      highlightMatch(searchMatches[newIndex]);
+    }
+  };
+  
+  const previousSearchResult = () => {
+    if (searchMatches.length > 0) {
+      const newIndex = currentSearchIndex === 0 ? 
+        searchMatches.length - 1 : 
+        currentSearchIndex - 1;
+      setCurrentSearchIndex(newIndex);
+      highlightMatch(searchMatches[newIndex]);
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
