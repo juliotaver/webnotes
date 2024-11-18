@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-// Importamos íconos para el botón de toggle
 import { Menu, X } from 'lucide-react';
+import { useOfflineSync } from './hooks/useOfflineSync';
 
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -26,16 +26,24 @@ function App() {
   const [password, setPassword] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const { isOnline, saveNoteLocally, syncWithServer } = useOfflineSync();
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(user => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
         setIsLoggedIn(true);
-        loadNotes();
-      } else {
-        setIsLoggedIn(false);
-        setNotes([]);
+        const db = await initDB();
+        const transaction = db.transaction('userData', 'readwrite');
+        const userStore = transaction.objectStore('userData');
+        await userStore.put({
+          id: 'currentUser',
+          uid: user.uid,
+          email: user.email
+        });
+        await loadNotes();
       }
+      setIsInitialized(true);
     });
 
     return () => unsubscribe();
@@ -43,14 +51,35 @@ function App() {
 
   const loadNotes = async () => {
     if (!auth.currentUser) return;
-    
-    const notesCollection = collection(db, `users/${auth.currentUser.uid}/notes`);
-    const notesSnapshot = await getDocs(notesCollection);
-    const notesList = notesSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-    setNotes(notesList);
+
+    try {
+      if (isOnline) {
+        const notesCollection = collection(db, `users/${auth.currentUser.uid}/notes`);
+        const notesSnapshot = await getDocs(notesCollection);
+        const notesList = notesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        const idb = await initDB();
+        const transaction = idb.transaction('notes', 'readwrite');
+        const notesStore = transaction.objectStore('notes');
+        
+        for (const note of notesList) {
+          await notesStore.put(note);
+        }
+        
+        setNotes(notesList);
+      } else {
+        const idb = await initDB();
+        const transaction = idb.transaction('notes', 'readonly');
+        const notesStore = transaction.objectStore('notes');
+        const notesList = await notesStore.getAll();
+        setNotes(notesList);
+      }
+    } catch (error) {
+      console.error('Error loading notes:', error);
+    }
   };
 
   const handleLogin = async (e) => {
@@ -73,7 +102,6 @@ function App() {
     }
   };
 
-  // Nueva función de cierre de sesión
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -83,7 +111,6 @@ function App() {
       alert('Error al cerrar sesión: ' + error.message);
     }
   };
-
   const createNote = async () => {
     if (!auth.currentUser) return;
     
@@ -102,20 +129,38 @@ function App() {
   };
 
   const updateNote = async (noteId, updates) => {
-    if (!auth.currentUser) return;
-    
-    const noteRef = doc(db, `users/${auth.currentUser.uid}/notes`, noteId);
-    await updateDoc(noteRef, {
-      ...updates,
-      updatedAt: new Date().toISOString()
-    });
-    
-    setNotes(notes.map(note => 
-      note.id === noteId 
-        ? { ...note, ...updates, updatedAt: new Date().toISOString() }
-        : note
-    ));
+    try {
+      const updatedNote = {
+        ...currentNote,
+        ...updates,
+        updatedAt: new Date().toISOString()
+      };
+
+      await saveNoteLocally(updatedNote);
+      
+      if (isOnline) {
+        const noteRef = doc(db, `users/${auth.currentUser.uid}/notes`, noteId);
+        await updateDoc(noteRef, {
+          ...updates,
+          updatedAt: new Date().toISOString()
+        });
+      }
+
+      setNotes(notes.map(note => 
+        note.id === noteId 
+          ? { ...note, ...updates, updatedAt: new Date().toISOString() }
+          : note
+      ));
+    } catch (error) {
+      console.error('Error updating note:', error);
+    }
   };
+
+  useEffect(() => {
+    if (isOnline) {
+      syncWithServer(updateNote);
+    }
+  }, [isOnline]);
 
   if (!isLoggedIn) {
     return (
@@ -157,7 +202,12 @@ function App() {
 
   return (
     <div className="flex h-screen bg-gray-100 relative">
-      {/* Sidebar - Lista de notas */}
+      <div className={`absolute top-0 right-0 m-2 px-3 py-1 rounded-full text-sm ${
+        isOnline ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'
+      }`}>
+        {isOnline ? 'Online' : 'Offline'}
+      </div>
+      
       <div className={`${
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
       } absolute md:relative w-64 bg-white border-r overflow-y-auto h-full transition-transform duration-300 ease-in-out z-10`}>
@@ -193,10 +243,8 @@ function App() {
         </div>
       </div>
 
-      {/* Área principal de edición */}
       <div className="flex-1 flex flex-col">
         <div className="flex justify-between items-center bg-white border-b">
-          {/* Botón de toggle sidebar */}
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="p-4 text-gray-600 hover:text-gray-900"
@@ -204,7 +252,6 @@ function App() {
             {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
 
-          {/* Área del título */}
           <div className="flex-1">
             {currentNote.id && (
               <input
@@ -221,7 +268,6 @@ function App() {
             )}
           </div>
           
-          {/* Botón de cierre de sesión */}
           <button
             onClick={handleLogout}
             className="px-4 py-2 m-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
