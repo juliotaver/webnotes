@@ -208,6 +208,70 @@ function App() {
     }
   };
 
+  const highlightMatch = (index) => {
+    if (textareaRef.current) {
+      // Scroll a la posición
+      const lineHeight = 20;
+      const textBefore = currentNote.content.substring(0, index);
+      const lineCount = textBefore.split('\n').length;
+      const scrollPosition = lineHeight * lineCount;
+      textareaRef.current.scrollTop = scrollPosition - 100;
+  
+      // Crear el overlay
+      const textarea = textareaRef.current;
+      
+      // Crear un div que refleje exactamente el contenido del textarea
+      const overlay = document.createElement('div');
+      overlay.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        background: transparent;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        overflow: hidden;
+        font: ${window.getComputedStyle(textarea).font};
+        padding: ${window.getComputedStyle(textarea).padding};
+        box-sizing: border-box;
+      `;
+  
+      // Escapar caracteres especiales HTML y convertir espacios en blanco
+      const escapeHtml = (text) => {
+        return text
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;")
+          .replace(/ /g, "&nbsp;");
+      };
+  
+      // Crear el contenido HTML con el resaltado
+      let html = '';
+      html += escapeHtml(currentNote.content.substring(0, index));
+      html += `<span style="background-color: yellow; border-radius: 2px;">${
+        escapeHtml(currentNote.content.substring(index, index + noteSearchTerm.length))
+      }</span>`;
+      html += escapeHtml(currentNote.content.substring(index + noteSearchTerm.length));
+      
+      // Reemplazar saltos de línea manteniendo el formato
+      overlay.innerHTML = html.replace(/\n/g, '<br>');
+  
+      // Agregar el overlay al DOM
+      textarea.parentNode.appendChild(overlay);
+  
+      // Remover después de un tiempo
+      setTimeout(() => {
+        if (overlay.parentNode) {
+          overlay.parentNode.removeChild(overlay);
+        }
+      }, 1500);
+    }
+  };
+
   const nextSearchResult = () => {
     if (searchMatches.length > 0) {
       const newIndex = (currentSearchIndex + 1) % searchMatches.length;
@@ -223,61 +287,6 @@ function App() {
         currentSearchIndex - 1;
       setCurrentSearchIndex(newIndex);
       highlightMatch(searchMatches[newIndex]);
-    }
-  };
-
-  const highlightMatch = (index) => {
-    if (textareaRef.current) {
-      const lineHeight = 20;
-      const textBefore = currentNote.content.substring(0, index);
-      const lineCount = textBefore.split('\n').length;
-      const scrollPosition = lineHeight * lineCount;
-      textareaRef.current.scrollTop = scrollPosition - 100;
-
-      const textarea = textareaRef.current;
-      const textareaRect = textarea.getBoundingClientRect();
-
-      const mirror = document.createElement('div');
-      mirror.style.position = 'absolute';
-      mirror.style.top = '0';
-      mirror.style.left = '0';
-      mirror.style.width = '100%';
-      mirror.style.height = '100%';
-      mirror.style.pointerEvents = 'none';
-      mirror.style.backgroundColor = 'transparent';
-      mirror.style.whiteSpace = 'pre-wrap';
-      mirror.style.wordWrap = 'break-word';
-      mirror.style.padding = window.getComputedStyle(textarea).padding;
-      mirror.style.font = window.getComputedStyle(textarea).font;
-      mirror.style.lineHeight = window.getComputedStyle(textarea).lineHeight;
-
-      const beforeText = currentNote.content.substring(0, index);
-      const searchText = currentNote.content.substring(index, index + noteSearchTerm.length);
-      const afterText = currentNote.content.substring(index + noteSearchTerm.length);
-
-      mirror.innerHTML = `
-        ${beforeText}
-        <span style="background-color: yellow; color: inherit;">${searchText}</span>
-        ${afterText}
-      `.replace(/\n/g, '<br>');
-
-      const container = document.createElement('div');
-      container.style.position = 'absolute';
-      container.style.top = '0';
-      container.style.left = '0';
-      container.style.width = '100%';
-      container.style.height = '100%';
-      container.style.overflow = 'hidden';
-      container.style.pointerEvents = 'none';
-      container.appendChild(mirror);
-
-      textarea.parentNode.appendChild(container);
-
-      setTimeout(() => {
-        if (container.parentNode) {
-          container.parentNode.removeChild(container);
-        }
-      }, 1500);
     }
   };
 
