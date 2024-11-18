@@ -33,6 +33,7 @@ function MobileApp() {
   const [searchResults, setSearchResults] = useState([]);
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
   const [searchMatches, setSearchMatches] = useState([]);
+  const [activeSearch, setActiveSearch] = useState('');
   const textareaRef = useRef(null);
   const { isOnline, saveNoteLocally, syncWithServer } = useOfflineSync();
 
