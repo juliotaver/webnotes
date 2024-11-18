@@ -250,12 +250,12 @@ function App() {
       };
   
       // Crear el contenido HTML con el resaltado
-      let html = '';
+      /* let html = '';
       html += escapeHtml(currentNote.content.substring(0, index));
       html += `<span style="background-color: yellow; border-radius: 2px;">${
         escapeHtml(currentNote.content.substring(index, index + noteSearchTerm.length))
       }</span>`;
-      html += escapeHtml(currentNote.content.substring(index + noteSearchTerm.length));
+      html += escapeHtml(currentNote.content.substring(index + noteSearchTerm.length)); */
       
       // Reemplazar saltos de línea manteniendo el formato
       overlay.innerHTML = html.replace(/\n/g, '<br>');
