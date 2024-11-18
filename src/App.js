@@ -5,6 +5,7 @@ import { getFirestore, collection, addDoc, getDocs, updateDoc, doc } from 'fireb
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { Menu, X } from 'lucide-react';
 import { useOfflineSync } from './hooks/useOfflineSync';
+import { initDB } from './db/indexedDB';
 
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
