@@ -32,6 +32,7 @@ function App() {
   const [searchResults, setSearchResults] = useState([]);
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
   const [searchMatches, setSearchMatches] = useState([]);
+  const [activeSearch, setActiveSearch] = useState('');
   const textareaRef = useRef(null);
   const { isOnline, saveNoteLocally, syncWithServer } = useOfflineSync();
 
@@ -166,7 +167,6 @@ function App() {
       console.error('Error updating note:', error);
     }
   };
-
   const searchNotes = (term) => {
     if (!term.trim()) {
       setSearchResults([]);
@@ -181,7 +181,8 @@ function App() {
 
     setSearchResults(results);
   };
-  const searchInNote = (term) => {
+
+  const searchInNote = (term, shouldNavigate = false) => {
     if (!term.trim() || !currentNote.content) {
       setSearchMatches([]);
       setCurrentSearchIndex(0);
@@ -199,7 +200,9 @@ function App() {
     }
 
     setSearchMatches(matches);
-    if (matches.length > 0) {
+    setActiveSearch(term);
+    
+    if (matches.length > 0 && shouldNavigate) {
       setCurrentSearchIndex(0);
       highlightMatch(matches[0]);
     }
@@ -207,73 +210,45 @@ function App() {
 
   const highlightMatch = (index) => {
     if (textareaRef.current) {
-      textareaRef.current.focus();
-      textareaRef.current.setSelectionRange(index, index + noteSearchTerm.length);
-      
       const lineHeight = 20;
       const textBefore = currentNote.content.substring(0, index);
       const lineCount = textBefore.split('\n').length;
       const scrollPosition = lineHeight * lineCount;
       
       textareaRef.current.scrollTop = scrollPosition - 100;
+
+      const textArea = textareaRef.current;
+      const wrapper = document.createElement('div');
+      wrapper.style.position = 'relative';
+      textArea.parentNode.insertBefore(wrapper, textArea);
+
+      const highlight = document.createElement('div');
+      highlight.style.position = 'absolute';
+      highlight.style.backgroundColor = 'yellow';
+      highlight.style.opacity = '0.5';
+      highlight.style.pointerEvents = 'none';
+
+      const textMetrics = textArea.getBoundingClientRect();
+      const charWidth = textMetrics.width / textArea.cols;
+      const charHeight = lineHeight;
+
+      highlight.style.left = (index % textArea.cols) * charWidth + 'px';
+      highlight.style.top = Math.floor(index / textArea.cols) * charHeight + 'px';
+      highlight.style.width = activeSearch.length * charWidth + 'px';
+      highlight.style.height = charHeight + 'px';
+
+      wrapper.appendChild(highlight);
+
+      setTimeout(() => {
+        if (highlight.parentNode) {
+          highlight.parentNode.removeChild(highlight);
+        }
+        if (wrapper.parentNode) {
+          wrapper.parentNode.removeChild(wrapper);
+        }
+      }, 2000);
     }
   };
-
-  const nextSearchResult = () => {
-    if (searchMatches.length > 0) {
-      const newIndex = (currentSearchIndex + 1) % searchMatches.length;
-      setCurrentSearchIndex(newIndex);
-      highlightMatch(searchMatches[newIndex]);
-    }
-  };
-
-  const previousSearchResult = () => {
-    if (searchMatches.length > 0) {
-      const newIndex = currentSearchIndex === 0 ? 
-        searchMatches.length - 1 : 
-        currentSearchIndex - 1;
-      setCurrentSearchIndex(newIndex);
-      highlightMatch(searchMatches[newIndex]);
-    }
-  };
-
-  if (!isLoggedIn) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-md w-96">
-          <h1 className="text-2xl mb-6 text-center">Notas App</h1>
-          <form>
-            <input
-              type="email"
-              placeholder="Email"
-              className="w-full p-2 mb-4 border rounded"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <input
-              type="password"
-              placeholder="Contraseña"
-              className="w-full p-2 mb-4 border rounded"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <button
-              onClick={handleLogin}
-              className="w-full bg-blue-500 text-white p-2 rounded mb-2"
-            >
-              Iniciar Sesión
-            </button>
-            <button
-              onClick={handleSignup}
-              className="w-full bg-green-500 text-white p-2 rounded"
-            >
-              Crear Cuenta
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex h-screen bg-gray-100 relative">
@@ -323,12 +298,6 @@ function App() {
               <p className="text-xs text-gray-400 mt-1">
                 {new Date(note.updatedAt).toLocaleDateString()}
               </p>
-              {searchTerm && (note.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                             note.content?.toLowerCase().includes(searchTerm.toLowerCase())) && (
-                <div className="mt-1 text-xs text-blue-500">
-                  Coincidencia encontrada
-                </div>
-              )}
             </div>
           ))}
         </div>
@@ -365,10 +334,20 @@ function App() {
                     value={noteSearchTerm}
                     onChange={(e) => {
                       setNoteSearchTerm(e.target.value);
-                      searchInNote(e.target.value);
+                      searchInNote(e.target.value, false);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        searchInNote(noteSearchTerm, true);
+                      }
                     }}
                   />
-                  <Search className="absolute right-2 top-2.5 text-gray-400" size={16} />
+                  <button
+                    onClick={() => searchInNote(noteSearchTerm, true)}
+                    className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
+                  >
+                    <Search size={16} />
+                  </button>
                 </div>
                 {searchMatches.length > 0 && (
                   <div className="flex items-center space-x-2">
@@ -402,17 +381,19 @@ function App() {
         </div>
         
         {currentNote.id ? (
-          <textarea
-            ref={textareaRef}
-            className="flex-1 p-4 resize-none focus:outline-none"
-            value={currentNote.content || ''}
-            onChange={(e) => {
-              const newContent = e.target.value;
-              setCurrentNote({ ...currentNote, content: newContent });
-              updateNote(currentNote.id, { content: newContent });
-            }}
-            placeholder="Escribe tu nota aquí..."
-          />
+          <div className="flex-1 relative">
+            <textarea
+              ref={textareaRef}
+              className="w-full h-full p-4 resize-none focus:outline-none"
+              value={currentNote.content || ''}
+              onChange={(e) => {
+                const newContent = e.target.value;
+                setCurrentNote({ ...currentNote, content: newContent });
+                updateNote(currentNote.id, { content: newContent });
+              }}
+              placeholder="Escribe tu nota aquí..."
+            />
+          </div>
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-500">
             Selecciona una nota o crea una nueva
