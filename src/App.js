@@ -257,6 +257,14 @@ function App() {
       }, 1500);
     }
   };
+
+  const nextSearchResult = () => {
+    if (searchMatches.length > 0) {
+      const newIndex = (currentSearchIndex + 1) % searchMatches.length;
+      setCurrentSearchIndex(newIndex);
+      highlightMatch(searchMatches[newIndex]);
+    }
+  };
   
   const previousSearchResult = () => {
     if (searchMatches.length > 0) {
