@@ -182,7 +182,6 @@ function App() {
 
     setSearchResults(results);
   };
-
   const searchInNote = (term, shouldNavigate = false) => {
     if (!term.trim() || !currentNote.content) {
       setSearchMatches([]);
@@ -211,20 +210,18 @@ function App() {
       highlightMatch(matches[0]);
     }
   };
+
   const highlightMatch = (match) => {
     if (textareaRef.current) {
       const textarea = textareaRef.current;
       
-      // Seleccionar el texto
       textarea.focus();
       textarea.setSelectionRange(match.start, match.end);
       
-      // Calcular la posición para el scroll
       const textBefore = textarea.value.substring(0, match.start);
       const linesBefore = textBefore.split('\n').length;
       const lineHeight = parseFloat(window.getComputedStyle(textarea).lineHeight) || 20;
       
-      // Hacer scroll a la posición
       const scrollPosition = (linesBefore - 1) * lineHeight;
       textarea.scrollTop = scrollPosition - 100;
     }
@@ -323,50 +320,6 @@ function App() {
                 className="text-xl font-semibold w-full border-none focus:outline-none"
                 placeholder="Título de la nota"
               />
-              <div className="flex items-center mt-2 space-x-2">
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    placeholder="Buscar en esta nota..."
-                    className="w-full p-2 pr-8 border rounded text-sm"
-                    value={noteSearchTerm}
-                    onChange={(e) => {
-                      setNoteSearchTerm(e.target.value);
-                      searchInNote(e.target.value, false);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        searchInNote(noteSearchTerm, true);
-                      }
-                    }}
-                  />
-                  <button
-                    onClick={() => searchInNote(noteSearchTerm, true)}
-                    className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
-                  >
-                    <Search size={16} />
-                  </button>
-                </div>
-                {searchMatches.length > 0 && (
-                  <div className="flex items-center space-x-2">
-                    <button 
-                      onClick={previousSearchResult}
-                      className="p-1 hover:bg-gray-100 rounded"
-                    >
-                      <ArrowUp size={20} />
-                    </button>
-                    <span className="text-sm text-gray-500">
-                      {currentSearchIndex + 1}/{searchMatches.length}
-                    </span>
-                    <button 
-                      onClick={nextSearchResult}
-                      className="p-1 hover:bg-gray-100 rounded"
-                    >
-                      <ArrowDown size={20} />
-                    </button>
-                  </div>
-                )}
-              </div>
             </div>
           )}
 
@@ -377,9 +330,58 @@ function App() {
             Cerrar Sesión
           </button>
         </div>
-        
+
+        {currentNote.id && (
+          <div className="md:relative fixed top-0 left-0 right-0 z-50 bg-white shadow-md md:shadow-none">
+            <div className="flex items-center p-2 space-x-2 border-b md:border-0">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder="Buscar en esta nota..."
+                  className="w-full p-2 pr-8 border rounded text-sm"
+                  value={noteSearchTerm}
+                  onChange={(e) => {
+                    setNoteSearchTerm(e.target.value);
+                    searchInNote(e.target.value, false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      searchInNote(noteSearchTerm, true);
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => searchInNote(noteSearchTerm, true)}
+                  className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
+                >
+                  <Search size={16} />
+                </button>
+              </div>
+              {searchMatches.length > 0 && (
+                <div className="flex items-center space-x-2 bg-white">
+                  <button 
+                    onClick={previousSearchResult}
+                    className="p-1 hover:bg-gray-100 rounded"
+                  >
+                    <ArrowUp size={20} />
+                  </button>
+                  <span className="text-sm text-gray-500 whitespace-nowrap">
+                    {currentSearchIndex + 1}/{searchMatches.length}
+                  </span>
+                  <button 
+                    onClick={nextSearchResult}
+                    className="p-1 hover:bg-gray-100 rounded"
+                  >
+                    <ArrowDown size={20} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {currentNote.id ? (
-          <div className="flex-1 relative">
+          <div className="flex-1 relative mt-[52px] md:mt-0">
             <textarea
               ref={textareaRef}
               className="w-full h-full p-4 resize-none focus:outline-none"
