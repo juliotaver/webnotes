@@ -210,73 +210,51 @@ function App() {
 
   const highlightMatch = (index) => {
     if (textareaRef.current) {
-      // Scroll a la posición
+      // Hacer scroll a la posición
       const lineHeight = 20;
       const textBefore = currentNote.content.substring(0, index);
       const lineCount = textBefore.split('\n').length;
       const scrollPosition = lineHeight * lineCount;
       textareaRef.current.scrollTop = scrollPosition - 100;
   
-      // Crear el overlay
+      // Crear el elemento de resaltado
+      const highlight = document.createElement('div');
       const textarea = textareaRef.current;
+      const computedStyle = window.getComputedStyle(textarea);
       
-      // Crear un div que refleje exactamente el contenido del textarea
-      const overlay = document.createElement('div');
-      overlay.style.cssText = `
+      // Calcular la posición exacta del texto a resaltar
+      const text = textarea.value.substring(0, index);
+      const lines = text.split('\n');
+      const currentLineIndex = lines.length - 1;
+      const currentLineStart = lines[currentLineIndex].length;
+      
+      // Calcular coordenadas
+      const charWidth = parseFloat(computedStyle.fontSize) * 0.6; // aproximación del ancho de caracter
+      const x = (currentLineStart % parseInt(textarea.cols || 50)) * charWidth + parseFloat(computedStyle.paddingLeft);
+      const y = currentLineIndex * lineHeight + parseFloat(computedStyle.paddingTop);
+  
+      // Establecer estilos para el resaltado
+      highlight.style.cssText = `
         position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
+        left: ${x}px;
+        top: ${y}px;
+        height: ${lineHeight}px;
+        width: ${noteSearchTerm.length * charWidth}px;
+        background-color: yellow;
         pointer-events: none;
-        background: transparent;
-        white-space: pre-wrap;
-        word-wrap: break-word;
-        overflow: hidden;
-        font: ${window.getComputedStyle(textarea).font};
-        padding: ${window.getComputedStyle(textarea).padding};
-        box-sizing: border-box;
+        opacity: 0.5;
+        z-index: 1;
       `;
   
-      // Escapar caracteres especiales HTML y convertir espacios en blanco
-      const escapeHtml = (text) => {
-        return text
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#039;")
-          .replace(/ /g, "&nbsp;");
-      };
-  
-      // Crear el contenido HTML con el resaltado
-      /* let html = '';
-      html += escapeHtml(currentNote.content.substring(0, index));
-      html += `<span style="background-color: yellow; border-radius: 2px;">${
-        escapeHtml(currentNote.content.substring(index, index + noteSearchTerm.length))
-      }</span>`;
-      html += escapeHtml(currentNote.content.substring(index + noteSearchTerm.length)); */
-      
-      // Reemplazar saltos de línea manteniendo el formato
-      //overlay.innerHTML = html.replace(/\n/g, '<br>');
-  
-      // Agregar el overlay al DOM
-      textarea.parentNode.appendChild(overlay);
+      // Agregar el resaltado
+      textarea.parentNode.appendChild(highlight);
   
       // Remover después de un tiempo
       setTimeout(() => {
-        if (overlay.parentNode) {
-          overlay.parentNode.removeChild(overlay);
+        if (highlight.parentNode) {
+          highlight.parentNode.removeChild(highlight);
         }
       }, 1500);
-    }
-  };
-
-  const nextSearchResult = () => {
-    if (searchMatches.length > 0) {
-      const newIndex = (currentSearchIndex + 1) % searchMatches.length;
-      setCurrentSearchIndex(newIndex);
-      highlightMatch(searchMatches[newIndex]);
     }
   };
   
@@ -423,16 +401,17 @@ function App() {
         {currentNote.id ? (
           <div className="flex-1 relative">
             <textarea
-              ref={textareaRef}
-              className="w-full h-full p-4 resize-none focus:outline-none absolute top-0 left-0"
-              value={currentNote.content || ''}
-              onChange={(e) => {
-                const newContent = e.target.value;
-                setCurrentNote({ ...currentNote, content: newContent });
-                updateNote(currentNote.id, { content: newContent });
-              }}
-              placeholder="Escribe tu nota aquí..."
-            />
+  ref={textareaRef}
+  className="w-full h-full p-4 resize-none focus:outline-none font-mono"  // agregamos font-mono para ancho de carácter consistente
+  style={{ lineHeight: '20px' }}  // aseguramos altura de línea consistente
+  value={currentNote.content || ''}
+  onChange={(e) => {
+    const newContent = e.target.value;
+    setCurrentNote({ ...currentNote, content: newContent });
+    updateNote(currentNote.id, { content: newContent });
+  }}
+  placeholder="Escribe tu nota aquí..."
+/>
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-500">
